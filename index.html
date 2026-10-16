@@ -160,49 +160,6 @@
     to { transform: scale(3); opacity: 0; }
   }
 
-  #tearArea {
-    width: 520px; height: 380px;
-    position: relative;
-    cursor: none;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  #tearBg {
-    position: absolute;
-    width: 100%; height: 100%;
-    background: linear-gradient(135deg, #e94560, #c23152);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    color: #fff;
-    font-weight: bold;
-    letter-spacing: 4px;
-  }
-  #tearPaper { position: absolute; width: 100%; height: 100%; border-radius: 10px; }
-  #tearCursor {
-    position: fixed;
-    width: 24px; height: 24px;
-    border: 2px solid #e94560;
-    border-radius: 50%;
-    pointer-events: none;
-    transform: translate(-50%, -50%);
-    z-index: 999;
-    display: none;
-    box-shadow: 0 0 10px rgba(233,69,96,0.4);
-  }
-  .tear-strip {
-    position: fixed;
-    background: #f5f5f0;
-    pointer-events: none;
-    z-index: 40;
-    animation: stripFall 0.6s ease-out forwards;
-  }
-  @keyframes stripFall {
-    to { transform: translateY(100px) rotate(15deg); opacity: 0; }
-  }
-
   #counter {
     position: fixed;
     bottom: 20px;
@@ -231,14 +188,12 @@
 <div class="tabs">
   <button class="tab active" data-mode="bubble">捏泡泡</button>
   <button class="tab" data-mode="glass">砸玻璃</button>
-  <button class="tab" data-mode="tear">撕纸</button>
 </div>
 
 <div id="gameArea"></div>
 <div id="combo"></div>
 <div id="counter"></div>
 <button id="resetBtn">重置</button>
-<div id="tearCursor"></div>
 
 <script>
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -286,29 +241,7 @@ function playCrash() {
   source.start();
 }
 
-function playTear() {
-  const ctx = getAudioCtx();
-  const bufferSize = ctx.sampleRate * 0.08;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = (Math.random() * 2 - 1) * 0.3 * Math.pow(1 - i / bufferSize, 2);
-  }
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = 800;
-  filter.Q.value = 2;
-  const gain = ctx.createGain();
-  gain.gain.value = 0.25;
-  source.connect(filter);
-  filter.connect(gain);
-  gain.connect(ctx.destination);
-  source.start();
-}
-
-function spawnParticles(x, y, color, count = 8) {
+function spawnParticles(x, y, color, count) {
   for (let i = 0; i < count; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
@@ -325,9 +258,9 @@ function spawnParticles(x, y, color, count = 8) {
     const dy = Math.sin(angle) * velocity;
     p.animate([
       { transform: 'translate(0,0) scale(1)', opacity: 1 },
-      { transform: `translate(${dx}px, ${dy + 60}px) scale(0)`, opacity: 0 }
+      { transform: 'translate(' + dx + 'px, ' + (dy + 60) + 'px) scale(0)', opacity: 0 }
     ], { duration: 400 + Math.random() * 200, easing: 'ease-out' });
-    setTimeout(() => p.remove(), 600);
+    setTimeout(function() { p.remove(); }, 600);
   }
 }
 
@@ -344,7 +277,7 @@ function addCombo() {
     void comboEl.offsetWidth;
     comboEl.classList.add('show');
   }
-  comboTimer = setTimeout(() => { comboCount = 0; }, 800);
+  comboTimer = setTimeout(function() { comboCount = 0; }, 800);
 }
 
 let currentMode = 'bubble';
@@ -357,19 +290,19 @@ function setMode(mode) {
   count = 0;
   comboCount = 0;
   counterEl.textContent = '';
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-  document.getElementById('tearCursor').style.display = mode === 'tear' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.mode === mode);
+  });
   area.innerHTML = '';
   if (mode === 'bubble') initBubble();
   else if (mode === 'glass') initGlass();
-  else if (mode === 'tear') initTear();
 }
 
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => setMode(tab.dataset.mode));
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() { setMode(tab.dataset.mode); });
 });
 
-document.getElementById('resetBtn').addEventListener('click', () => {
+document.getElementById('resetBtn').addEventListener('click', function() {
   setMode(currentMode);
 });
 
@@ -382,7 +315,7 @@ function initBubble() {
   for (let i = 0; i < total; i++) {
     const b = document.createElement('div');
     b.className = 'bubble';
-    b.addEventListener('click', (e) => {
+    b.addEventListener('click', function(e) {
       if (b.classList.contains('popping')) return;
       b.classList.add('popping');
       popped++;
@@ -391,20 +324,21 @@ function initBubble() {
       playPop();
       const rect = b.getBoundingClientRect();
       spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, '#5aafff', 6);
-      counterEl.textContent = `${popped} / ${total}`;
+      counterEl.textContent = popped + ' / ' + total;
       if (popped === total) {
         counterEl.textContent = '全部捏完！';
         for (let j = 0; j < 5; j++) {
-          setTimeout(() => {
+          setTimeout(function() {
+            const colors = ['#e94560', '#5aafff', '#ffd700'];
             spawnParticles(
               window.innerWidth / 2 + (Math.random() - 0.5) * 300,
               window.innerHeight / 2 + (Math.random() - 0.5) * 200,
-              ['#e94560', '#5aafff', '#ffd700'][Math.floor(Math.random() * 3)],
+              colors[Math.floor(Math.random() * 3)],
               12
             );
           }, j * 100);
         }
-        setTimeout(initBubble, 1500);
+        setTimeout(function() { initBubble(); }, 1500);
       }
     });
     sheet.appendChild(b);
@@ -418,7 +352,7 @@ function initGlass() {
   let hitCount = 0;
   const maxHits = 40;
 
-  glass.addEventListener('click', (e) => {
+  glass.addEventListener('click', function(e) {
     const rect = glass.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -428,7 +362,7 @@ function initGlass() {
     flash.style.left = (x - 30) + 'px';
     flash.style.top = (y - 30) + 'px';
     glass.appendChild(flash);
-    setTimeout(() => flash.remove(), 300);
+    setTimeout(function() { flash.remove(); }, 300);
 
     const crackCount = 3 + Math.floor(Math.random() * 3);
     for (let i = 0; i < crackCount; i++) {
@@ -438,7 +372,7 @@ function initGlass() {
       line.style.top = y + 'px';
       const len = 30 + Math.random() * 60;
       line.style.width = len + 'px';
-      line.style.transform = `rotate(${Math.random() * 360}deg)`;
+      line.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
       glass.appendChild(line);
     }
 
@@ -449,26 +383,46 @@ function initGlass() {
       const size = 8 + Math.random() * 20;
       shard.style.width = size + 'px';
       shard.style.height = size + 'px';
-      shard.style.left = (x - size/2 + (Math.random()-0.5)*20) + 'px';
-      shard.style.top = (y - size/2 + (Math.random()-0.5)*20) + 'px';
-      shard.style.setProperty('--rot', (Math.random()*60-30) + 'deg');
+      shard.style.left = (x - size / 2 + (Math.random() - 0.5) * 20) + 'px';
+      shard.style.top = (y - size / 2 + (Math.random() - 0.5) * 20) + 'px';
+      shard.style.setProperty('--rot', (Math.random() * 60 - 30) + 'deg');
       shard.style.borderRadius = Math.random() > 0.5 ? '30% 70% 50% 40%' : '50% 30% 60% 40%';
       glass.appendChild(shard);
-      setTimeout(() => shard.remove(), 800);
+      setTimeout(function() { shard.remove(); }, 800);
     }
 
     document.body.classList.add('shake');
-    setTimeout(() => document.body.classList.remove('shake'), 150);
+    setTimeout(function() { document.body.classList.remove('shake'); }, 150);
     spawnParticles(e.clientX, e.clientY, 'rgba(180,220,255,0.8)', 5);
 
     hitCount++;
     count++;
     addCombo();
     playCrash();
-    counterEl.textContent = `敲击 ${hitCount} / ${maxHits}`;
+    counterEl.textContent = '敲击 ' + hitCount + ' / ' + maxHits;
 
     if (hitCount >= maxHits) {
       glass.style.transition = 'opacity 0.5s';
       glass.style.opacity = '0';
       counterEl.textContent = '玻璃已粉碎！';
-      for (let i = 0; i < 8; i
+      for (let i = 0; i < 8; i++) {
+        setTimeout(function() {
+          spawnParticles(
+            window.innerWidth / 2 + (Math.random() - 0.5) * 400,
+            window.innerHeight / 2 + (Math.random() - 0.5) * 200,
+            'rgba(180,220,255,0.7)',
+            10
+          );
+        }, i * 60);
+      }
+      setTimeout(function() { initGlass(); }, 1500);
+    }
+  });
+
+  area.appendChild(glass);
+}
+
+setMode('bubble');
+</script>
+</body>
+</html>
